@@ -1,67 +1,64 @@
 from keep_alive import keep_alive
 import os
 import discord
-import google.generativeai as genai
 from discord.ext import commands
 from dotenv import load_dotenv
 import logging
-import asyncio
+import requests
 
-# Configure logging to see detailed errors
+# Basic setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 keep_alive()
 load_dotenv()
 
-# Gemini API Configuration with location bypass
-try:
-    genai.configure(
-        api_key=os.getenv("GOOGLE_API_KEY"),
-        transport='rest',
-        client_options={
-            'api_endpoint': 'https://generativelanguage.googleapis.com',
-            'rest_options': {
-                'headers': {
-                    'X-Goog-User-Project': '',
-                    'X-Goog-Location': 'US'
-                }
-            }
-        }
-    )
-    model = genai.GenerativeModel('gemini-1.5-pro')  # More stable model
-    logger.info("Gemini API configured successfully")
-except Exception as e:
-    logger.error(f"Gemini setup failed: {str(e)}")
-    raise
+# Hardcoded config
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+API_KEY = os.getenv("GOOGLE_API_KEY")
+HEADERS = {
+    "Content-Type": "application/json",
+    "X-Goog-Location": "United States",  # Force US location
+    "X-Goog-User-Project": "gta-bot"  # Fake project ID
+}
 
-# Discord bot setup
+# Discord setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
-    logger.info(f'{bot.user.name} is online!')
+    logger.info(f'🔥 {bot.user.name} is ONLINE!')
     await bot.change_presence(activity=discord.Activity(
         type=discord.ActivityType.listening,
-        name="to West Coast Classics"
+        name="to Grove Street Radio"
     ))
 
-async def generate_with_retry(prompt, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt)
-            if response.text:
-                return response.text.strip()
-            raise ValueError("Empty response from Gemini")
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 2 ** attempt  # Exponential backoff
-                logger.warning(f"Retry {attempt + 1} in {wait_time}s...")
-                await asyncio.sleep(wait_time)
-                continue
-            raise
+def gangsta_response(prompt):
+    try:
+        payload = {
+            "contents": [{
+                "parts": [{
+                    "text": f"You are CJ from GTA San Andreas. Respond in pure gangsta slang using ONLY: homie, dawg, aight, cuz, busta. Max 2 sentences. Message: {prompt}"
+                }]
+            }]
+        }
+        
+        response = requests.post(
+            f"{GEMINI_URL}?key={API_KEY}",
+            json=payload,
+            headers=HEADERS,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        return "Yo, my mind's blankin' right now cuz!"
+        
+    except Exception as e:
+        logger.error(f"GEMINI FAIL: {str(e)}")
+        return "Five-0 up in my grill, try again homie!"
 
 @bot.event
 async def on_message(message):
@@ -70,35 +67,17 @@ async def on_message(message):
 
     if bot.user.mentioned_in(message):
         try:
-            logger.info(f"Processing message: {message.content}")
-            
-            prompt = f"""You are CJ from GTA San Andreas. Respond to this message in authentic gangsta slang:
-            {message.content}
-            
-            Rules:
-            1. Use ONLY: homie, dawg, aight, cuz, busta
-            2. Max 2 sentences
-            3. No proper grammar
-            4. Never mention you're an AI
-            5. Example: "Yo homie, we ridin' to Grove Street, aight?"
-            """
-            
-            reply = await generate_with_retry(prompt)
+            reply = gangsta_response(message.content)
             await message.reply(reply[:1500], mention_author=False)
-            
         except Exception as e:
-            logger.error(f"API Error: {str(e)}")
-            await message.reply("Five-0 jammed my comms, try again later.")
+            logger.error(f"MESSAGE FAIL: {str(e)}")
+            await message.reply("🚨 Comms down! 🚨")
 
     await bot.process_commands(message)
 
 @bot.command()
 async def test(ctx):
-    """Test command to verify basic functionality"""
-    await ctx.send("🚨 **Grove Street systems operational!** 🚨")
+    await ctx.send("✅ Grove Street 4 life! Ballas can't stop us!")
 
 if __name__ == "__main__":
-    try:
-        bot.run(os.getenv("DISCORD_TOKEN"))
-    except Exception as e:
-        logger.error(f"Bot crashed: {str(e)}")
+    bot.run(os.getenv("DISCORD_TOKEN"))
