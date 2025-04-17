@@ -1,6 +1,9 @@
 from flask import Flask
 from threading import Thread
 import os  # Add this
+import logging
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)  # Add these 2 lines
 
 app = Flask(__name__)
 
