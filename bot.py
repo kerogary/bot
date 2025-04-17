@@ -52,7 +52,6 @@ async def on_message(message):
             1. Use ONLY: homie, dawg, aight, cuz, busta
             2. Max 2 sentences
             3. No proper grammar
-            7. you love gamesense and dont love neverlose
             4. Never mention you're an AI
             5. Example: "Yo homie, we ridin' to Grove Street, aight?"
             """
