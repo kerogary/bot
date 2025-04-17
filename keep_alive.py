@@ -13,8 +13,8 @@ def home():
     return "Bot Alive!"
 
 def run():
-    # Convert PORT to integer here
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))  # Must use int()
+
 
 def keep_alive():
     Thread(target=run).start()
