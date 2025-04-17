@@ -5,6 +5,7 @@ import google.generativeai as genai
 from discord.ext import commands
 from dotenv import load_dotenv
 import logging
+import asyncio
 
 # Configure logging to see detailed errors
 logging.basicConfig(level=logging.INFO)
@@ -13,10 +14,22 @@ logger = logging.getLogger(__name__)
 keep_alive()
 load_dotenv()
 
-# Gemini API Configuration
+# Gemini API Configuration with location bypass
 try:
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    genai.configure(
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        transport='rest',
+        client_options={
+            'api_endpoint': 'https://generativelanguage.googleapis.com',
+            'rest_options': {
+                'headers': {
+                    'X-Goog-User-Project': '',
+                    'X-Goog-Location': 'US'
+                }
+            }
+        }
+    )
+    model = genai.GenerativeModel('gemini-1.5-pro')  # More stable model
     logger.info("Gemini API configured successfully")
 except Exception as e:
     logger.error(f"Gemini setup failed: {str(e)}")
@@ -35,6 +48,21 @@ async def on_ready():
         name="to West Coast Classics"
     ))
 
+async def generate_with_retry(prompt, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            if response.text:
+                return response.text.strip()
+            raise ValueError("Empty response from Gemini")
+        except Exception as e:
+            if attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff
+                logger.warning(f"Retry {attempt + 1} in {wait_time}s...")
+                await asyncio.sleep(wait_time)
+                continue
+            raise
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -44,7 +72,6 @@ async def on_message(message):
         try:
             logger.info(f"Processing message: {message.content}")
             
-            # Enhanced prompt with strict formatting rules
             prompt = f"""You are CJ from GTA San Andreas. Respond to this message in authentic gangsta slang:
             {message.content}
             
@@ -56,12 +83,8 @@ async def on_message(message):
             5. Example: "Yo homie, we ridin' to Grove Street, aight?"
             """
             
-            response = model.generate_content(prompt)
-            if not response.text:
-                raise ValueError("Empty response from Gemini")
-                
-            reply = response.text.strip()
-            await message.reply(reply[:1500], mention_author=False)  # Trim long messages
+            reply = await generate_with_retry(prompt)
+            await message.reply(reply[:1500], mention_author=False)
             
         except Exception as e:
             logger.error(f"API Error: {str(e)}")
