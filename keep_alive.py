@@ -1,9 +1,10 @@
 from flask import Flask
 from threading import Thread
-import os  # Add this
+import os
 import logging
+
 log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)  # Add these 2 lines
+log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
@@ -12,7 +13,8 @@ def home():
     return "Bot Alive!"
 
 def run():
-    app.run(host='0.0.0.0', port=os.environ.get('PORT', 8080))  # Use dynamic port
+    # Convert PORT to integer here
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
 
 def keep_alive():
     Thread(target=run).start()
