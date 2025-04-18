@@ -6,21 +6,16 @@ from dotenv import load_dotenv
 import logging
 import requests
 
-# Basic setup
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 keep_alive()
 load_dotenv()
 
-# Hardcoded config
+# API Configuration
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
 API_KEY = os.getenv("GOOGLE_API_KEY")
-HEADERS = {
-    "Content-Type": "application/json",
-    "X-Goog-Location": "United States",  # Force US location
-    "X-Goog-User-Project": "gta-bot"  # Fake project ID
-}
 
 # Discord setup
 intents = discord.Intents.default()
@@ -37,28 +32,37 @@ async def on_ready():
 
 def gangsta_response(prompt):
     try:
-        payload = {
-            "contents": [{
-                "parts": [{
-                    "text": f"You are CJ from GTA San Andreas. Respond in pure gangsta slang using ONLY: homie, dawg, aight, cuz, busta. Max 2 sentences. Message: {prompt}"
-                }]
-            }]
-        }
-        
         response = requests.post(
             f"{GEMINI_URL}?key={API_KEY}",
-            json=payload,
-            headers=HEADERS,
+            json={
+                "contents": [{
+                    "parts": [{
+                        "text": f"You are CJ from GTA San Andreas. Respond in pure gangsta slang using ONLY: homie, dawg, aight, cuz, busta. Max 2 sentences. Message: {prompt}"
+                    }]
+                }]
+            },
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Location": "US"  # Force US region
+            },
             timeout=10
         )
         
-        if response.status_code == 200:
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        return "Yo, my mind's blankin' right now cuz!"
+        # PROPER ERROR HANDLING
+        if response.status_code != 200:
+            error_msg = response.json().get('error', {}).get('message', 'Unknown error')
+            logger.error(f"Gemini Error ({response.status_code}): {error_msg}")
+            return "Five-0 blocking my vibe, try again cuz!"
+            
+        data = response.json()
+        if not data.get('candidates'):
+            return "Yo, my mind's blankin' right now!"
+            
+        return data['candidates'][0]['content']['parts'][0]['text']
         
     except Exception as e:
         logger.error(f"GEMINI FAIL: {str(e)}")
-        return "Five-0 up in my grill, try again homie!"
+        return "🚨 Comms down! Ballas hacked the system!"
 
 @bot.event
 async def on_message(message):
@@ -71,7 +75,7 @@ async def on_message(message):
             await message.reply(reply[:1500], mention_author=False)
         except Exception as e:
             logger.error(f"MESSAGE FAIL: {str(e)}")
-            await message.reply("🚨 Comms down! 🚨")
+            await message.reply("🔥 Grove Street down! Try again homie!")
 
     await bot.process_commands(message)
 
