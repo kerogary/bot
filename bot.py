@@ -14,7 +14,7 @@ keep_alive()
 load_dotenv()
 
 # API Configuration
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Discord setup
